@@ -1,0 +1,53 @@
+version: '3.3'
+
+services:
+  ldap:
+    container_name: ldap
+    image: osixia/openldap
+    ports:
+      - "10389:389"
+      - "10636:636"
+    command: [--copy-service,  --loglevel, debug]
+    volumes:
+      - ./users2.ldif:/container/service/slapd/assets/config/bootstrap/ldif/data.ldif
+    environment:
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_DOMAIN=example.org
+  phpldapadmin:
+    container_name: phpldapadmin
+    image: osixia/phpldapadmin
+    ports:
+      - "10080:80"
+    environment:
+      - PHPLDAPADMIN_HTTPS="false"
+      - PHPLDAPADMIN_LDAP_HOSTS=ldap
+    depends_on:
+      - ldap
+  postgresql1:
+    image:  postgres:12
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak 
+    volumes:
+      - ./pgdata1:/var/lib/postgresql/data
+  keycloak1:
+    container_name: keycloak1
+    image: quay.io/keycloak/keycloak:11.0.2
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_VENDOR=postgres
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - DB_ADDR=postgresql1
+      - DB_PORT=5432
+      - DB_DATABASE=keycloak
+      - DB_USER=keycloak
+      - DB_PASSWORD=keycloak
+    depends_on:
+      - ldap
+      - postgresql1
